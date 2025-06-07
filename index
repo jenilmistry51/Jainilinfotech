@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Bill - JAINIL INFOTECH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+            #invoice-box {
+                box-shadow: none;
+                border: none;
+                margin: 0;
+                max-width: 100%;
+                page-break-inside: avoid;
+            }
+        }
+        [contenteditable="true"]:focus {
+            outline: 2px solid #3b82f6;
+            background-color: #eff6ff;
+        }
+        .stamp {
+            border: 3px double #374151;
+            padding: 0.75rem;
+            text-align: center;
+            font-weight: 600;
+            color: #1f2937;
+            border-radius: 0.5rem;
+            text-transform: uppercase;
+        }
+        .logo-placeholder {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 1rem;
+            position: relative;
+        }
+        .logo-placeholder::before {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 60px;
+            background: linear-gradient(to bottom, #22c55e 0%, #16a34a 50%, #15803d 100%);
+            border-radius: 8px 8px 4px 4px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.3);
+        }
+        .logo-placeholder::after {
+            content: 'JI';
+            position: absolute;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 1;
+        }
+        
+        .watermark-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 30% 30%, rgba(34, 197, 94, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 70% 70%, rgba(34, 197, 94, 0.03) 0%, transparent 50%);
+            background-size: 400px 400px, 300px 300px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .watermark-stamp {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            opacity: 0.05;
+            font-size: 48px;
+            font-weight: bold;
+            color: #22c55e;
+            text-align: center;
+            pointer-events: none;
+            z-index: 0;
+            white-space: nowrap;
+        }
+        
+        .content-wrapper {
+            position: relative;
+            z-index: 1;
+        }
+        #invoice-box {
+            min-height: 297mm;
+            max-width: 210mm;
+            padding: 15mm;
+        }
+        @media screen {
+            #invoice-box {
+                min-height: auto;
+                max-width: 4xl;
+                padding: 2rem;
+            }
+        }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .login-form {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .auth-header {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-container">
+        <div class="login-form">
+            <div class="text-center mb-8">
+                <div class="logo-placeholder mx-auto mb-4"></div>
+                <h1 class="text-2xl font-bold text-gray-800">JAINIL INFOTECH</h1>
+                <p class="text-green-600 text-sm font-semibold italic">Invoice Management System</p>
+            </div>
+            
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input type="text" id="username" name="username" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                           placeholder="Enter username">
+                </div>
+                
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="password" name="password" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                           placeholder="Enter password">
+                </div>
+                
+                <button type="submit" 
+                        class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-colors duration-200">
+                    Login
+                </button>
+                
+                <div id="login-error" class="hidden mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+                    Invalid username or password. Please try again.
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Invoice Application -->
+    <div id="invoice-app" class="hidden">
+        <!-- Authentication Header -->
+        <div class="auth-header no-print">
+            <div>
+                <span class="font-semibold">Welcome to Invoice System</span>
+                <span class="text-sm opacity-75 ml-2" id="logged-user"></span>
+            </div>
+            <button id="logout-btn" class="logout-btn">Logout</button>
+        </div>
+
+        <div class="p-4 sm:p-6 lg:p-8">
+            <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg" id="invoice-box">
+                <!-- Watermark Background -->
+                <div class="watermark-background"></div>
+                <div class="watermark-stamp">
+                    JAINIL INFOTECH<br>
+                    SERVING EXCELLENCE SINCE 2003<br>
+                    AUTHORIZED DEALER
+                </div>
+                
+                <!-- Content Wrapper -->
+                <div class="content-wrapper">
+                    <!-- Header Section -->
+                    <header class="flex justify-between items-start mb-8">
+                        <div class="flex items-center">
+                            <div class="logo-placeholder"></div>
+                            <div>
+                                <h1 class="text-3xl font-bold text-gray-800">JAINIL INFOTECH</h1>
+                                <p class="text-green-600 text-sm font-semibold italic">"Serving Excellence in IT Solutions Since 2003"</p>
+                                <p class="text-gray-600 text-sm">233,234 Heena Arcade, GIDC Char Rasta, Vapi, Gujarat, India</p>
+                                <p class="text-gray-600 text-sm">Contact: 9723810876, 9974057209</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <h2 class="text-2xl font-semibold text-gray-700">INVOICE</h2>
+                            <div class="flex items-center justify-end mt-2">
+                                <span class="font-semibold text-gray-600 mr-2">Bill No:</span>
+                                <div contenteditable="true" class="p-1 rounded-md min-w-[80px] text-gray-800 bg-gray-50 border border-gray-200">INV-1001</div>
+                            </div>
+                            <div class="flex items-center justify-end mt-1">
+                                <span class="font-semibold text-gray-600 mr-2">Date:</span>
+                                <div contenteditable="true" id="invoice-date" class="p-1 rounded-md min-w-[100px] text-gray-800 bg-gray-50 border border-gray-200"></div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <!-- Customer Details -->
+                    <div class="mb-8">
+                        <h3 class="text-gray-800 font-semibold mb-2">Bill To:</h3>
+                        <div contenteditable="true" class="p-2 rounded-md bg-gray-50 border border-gray-200 text-gray-700 min-h-[50px]">
+                            Customer Name<br>
+                            Customer Address
+                        </div>
+                    </div>
+
+                    <!-- Items Table -->
+                    <div class="w-full overflow-x-auto mb-6">
+                        <table class="w-full text-left" id="items-table">
+                            <thead>
+                                <tr class="bg-gray-800 text-white">
+                                    <th class="p-3 font-semibold w-16 text-center">Sr.No.</th>
+                                    <th class="p-3 font-semibold">Material / Description</th>
+                                    <th class="p-3 font-semibold w-24 text-right">Qty</th>
+                                    <th class="p-3 font-semibold w-32 text-right">Price (₹)</th>
+                                    <th class="p-3 font-semibold w-32 text-right">Total (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="item-row border-b border-gray-200">
+                                    <td class="p-2 text-center align-top">1</td>
+                                    <td contenteditable="true" class="p-2 description align-top">IT Service / Product Name</td>
+                                    <td contenteditable="true" class="p-2 qty text-right align-top">1</td>
+                                    <td contenteditable="true" class="p-2 price text-right align-top">0.00</td>
+                                    <td class="p-2 total text-right align-top font-semibold">0.00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Add Row Button - Hidden in PDF -->
+                    <div class="flex justify-end mb-6 no-print">
+                        <button id="add-row-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                            + Add Row
+                        </button>
+                    </div>
+
+                    <!-- Total Section -->
+                    <div class="flex justify-end mb-8">
+                        <div class="w-full max-w-sm">
+                            <hr class="my-4 border-t-2 border-gray-300">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xl font-bold text-gray-900">Grand Total</span>
+                                <span id="grand-total" class="text-xl font-bold text-gray-900">₹0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Spacer to push footer to bottom -->
+                    <div class="flex-grow"></div>
+                    
+                    <!-- Footer -->
+                    <footer class="mt-auto pt-8 border-t-2 border-dashed">
+                        <div class="flex justify-between items-end">
+                            <div class="text-center">
+                                <div class="w-48 h-12 border-b-2 border-gray-400"></div>
+                                <p class="mt-2 text-sm text-gray-600">Receiver's Signature</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="stamp bg-green-50 border-green-600 text-green-800">
+                                    For JAINIL INFOTECH
+                                    <p class="text-xs font-normal normal-case mt-1">Authorized Signatory</p>
+                                    <p class="text-xs font-normal normal-case">Yogesh Mistry</p>
+                                </div>
+                            </div>
+                        </div>
+                    </footer>
+                </div>
+            </div>
+            
+            <!-- Export Button - Hidden in PDF -->
+            <div class="max-w-4xl mx-auto text-center mt-6 no-print">
+                <button id="export-pdf-btn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-transform transform hover:scale-105">
+                    Export as PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Authentication System
+        const AUTH_CONFIG = {
+            users: {
+                'jainil': 'infotech2024'
+            }
+        };
+
+        class AuthManager {
+            constructor() {
+                this.currentUser = null;
+                this.init();
+            }
+
+            init() {
+                // Check if user is already logged in (in memory only)
+                this.checkAuthStatus();
+                this.bindEvents();
+            }
+
+            bindEvents() {
+                const loginForm = document.getElementById('login-form');
+                const logoutBtn = document.getElementById('logout-btn');
+
+                loginForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleLogin();
+                });
+
+                logoutBtn.addEventListener('click', () => {
+                    this.handleLogout();
+                });
+            }
+
+            handleLogin() {
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value;
+                const errorDiv = document.getElementById('login-error');
+                const loginForm = document.getElementById('login-form');
+
+                // Validate credentials
+                if (AUTH_CONFIG.users[username] && AUTH_CONFIG.users[username] === password) {
+                    this.currentUser = username;
+                    this.showInvoiceApp();
+                    this.hideError();
+                } else {
+                    this.showError();
+                    loginForm.classList.add('shake');
+                    setTimeout(() => {
+                        loginForm.classList.remove('shake');
+                    }, 500);
+                }
+            }
+
+            handleLogout() {
+                this.currentUser = null;
+                this.showLoginScreen();
+                this.clearForm();
+            }
+
+            showInvoiceApp() {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('invoice-app').classList.remove('hidden');
+                document.getElementById('logged-user').textContent = `(${this.currentUser})`;
+            }
+
+            showLoginScreen() {
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('invoice-app').classList.add('hidden');
+            }
+
+            showError() {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+
+            hideError() {
+                document.getElementById('login-error').classList.add('hidden');
+            }
+
+            clearForm() {
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+                this.hideError();
+            }
+
+            checkAuthStatus() {
+                // In a real application, you might check localStorage or sessionStorage
+                // For this demo, we'll just show the login screen
+                this.showLoginScreen();
+            }
+
+            isAuthenticated() {
+                return this.currentUser !== null;
+            }
+        }
+
+        // Initialize Authentication
+        const authManager = new AuthManager();
+
+        // Invoice Management System (only works when authenticated)
+        document.addEventListener('DOMContentLoaded', function () {
+            const itemsTable = document.getElementById('items-table').getElementsByTagName('tbody')[0];
+            const addRowBtn = document.getElementById('add-row-btn');
+            const exportPdfBtn = document.getElementById('export-pdf-btn');
+            const invoiceDateEl = document.getElementById('invoice-date');
+
+            // Set current date
+            const today = new Date();
+            invoiceDateEl.textContent = today.toLocaleDateString('en-GB'); // DD/MM/YYYY format
+
+            // --- FUNCTIONS ---
+
+            // Function to calculate totals for a single row
+            const calculateRowTotal = (row) => {
+                const qty = parseFloat(row.querySelector('.qty').textContent) || 0;
+                const price = parseFloat(row.querySelector('.price').textContent) || 0;
+                const total = qty * price;
+                row.querySelector('.total').textContent = total.toFixed(2);
+                return total;
+            };
+
+            // Function to calculate grand total (without tax)
+            const calculateGrandTotal = () => {
+                let grandTotal = 0;
+                const rows = itemsTable.querySelectorAll('.item-row');
+                rows.forEach(row => {
+                    grandTotal += calculateRowTotal(row);
+                });
+
+                document.getElementById('grand-total').textContent = `₹${grandTotal.toFixed(2)}`;
+            };
+
+            // Function to add a new item row
+            const addRow = () => {
+                if (!authManager.isAuthenticated()) {
+                    alert('Please login to add items');
+                    return;
+                }
+
+                const rowCount = itemsTable.rows.length;
+                const newRow = itemsTable.insertRow(rowCount);
+                newRow.className = 'item-row border-b border-gray-200';
+                
+                newRow.innerHTML = `
+                    <td class="p-2 text-center align-top">${rowCount + 1}</td>
+                    <td contenteditable="true" class="p-2 description align-top">New Item</td>
+                    <td contenteditable="true" class="p-2 qty text-right align-top">1</td>
+                    <td contenteditable="true" class="p-2 price text-right align-top">0.00</td>
+                    <td class="p-2 total text-right align-top font-semibold">0.00</td>
+                `;
+                
+                // Add event listeners to the new row
+                newRow.querySelectorAll('[contenteditable="true"]').forEach(el => {
+                    el.addEventListener('input', calculateGrandTotal, false);
+                });
+            };
+
+            // Function to handle PDF export
+            const exportToPdf = () => {
+                if (!authManager.isAuthenticated()) {
+                    alert('Please login to export PDF');
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                const invoiceBox = document.getElementById('invoice-box');
+                
+                // Temporarily remove focus outlines for PDF generation
+                const focusedElement = document.activeElement;
+                if(focusedElement) {
+                    focusedElement.blur();
+                }
+
+                html2canvas(invoiceBox, {
+                    scale: 2,
+                    useCORS: true,
+                    width: invoiceBox.scrollWidth,
+                    height: invoiceBox.scrollHeight,
+                    backgroundColor: '#ffffff'
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+                    const canvasWidth = canvas.width;
+                    const canvasHeight = canvas.height;
+                    const ratio = canvasWidth / canvasHeight;
+                    
+                    // Calculate dimensions to fit A4
+                    const imgWidth = pdfWidth - 20; // 10mm margin on each side
+                    const imgHeight = imgWidth / ratio;
+                    
+                    // Center the image on the page
+                    const xOffset = 10; // 10mm margin
+                    const yOffset = 10; // 10mm margin
+
+                    if (imgHeight <= pdfHeight - 20) {
+                        // Single page
+                        pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
+                    } else {
+                        // Multi-page handling
+                        let heightLeft = imgHeight;
+                        let position = yOffset;
+                        
+                        pdf.addImage(imgData, 'PNG', xOffset, position, imgWidth, imgHeight);
+                        heightLeft -= (pdfHeight - 20);
+                        
+                        while (heightLeft > 0) {
+                            position = heightLeft - imgHeight;
+                            pdf.addPage();
+                            pdf.addImage(imgData, 'PNG', xOffset, position, imgWidth, imgHeight);
+                            heightLeft -= pdfHeight;
+                        }
+                    }
+                    
+                    const billNo = document.querySelector('[contenteditable="true"]').textContent || 'invoice';
+                    pdf.save(`${billNo}.pdf`);
+                });
+            };
+
+            // Protect editable fields
+            const protectEditableFields = () => {
+                document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+                    el.addEventListener('focus', (e) => {
+                        if (!authManager.isAuthenticated()) {
+                            e.target.blur();
+                            alert('Please login to edit invoice details');
+                        }
+                    });
+                });
+            };
+
+            // --- EVENT LISTENERS ---
+
+            // Calculate totals on any input change
+            itemsTable.addEventListener('input', (e) => {
+                if (e.target.matches('.qty') || e.target.matches('.price')) {
+                    calculateGrandTotal();
+                }
+            });
+
+            // Add new row on button click
+            addRowBtn.addEventListener('click', addRow);
+            
+            // Export PDF on button click
+            exportPdfBtn.addEventListener('click', exportToPdf);
+
+            // Protect editable fields
+            protectEditableFields();
+
+            // --- INITIAL CALCULATION ---
+            calculateGrandTotal();
+        });
+    </script>
+</body>
+</html>
